@@ -1,9 +1,6 @@
 import os
-import re
-import json
 import uuid
-from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 import numpy as np
 import networkx as nx
@@ -11,37 +8,23 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from text_processing import chunk_text
+from data import SourceDocument, ExtractedClaim, SkillNode
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
-client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.5-flash-lite"
 SKILL_MERGE_THRESHOLD = 0.80
 embedder_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-
-@dataclass
-class SourceDocument:
-    source_id: str          # e.g. "github_repo:order-processing-service"
-    source_type: str        # "resume" | "github_repo"
-    text: str
-
-
-@dataclass
-class ExtractedClaim:
-    skill: str               # model's own phrasing, e.g. "asyncio for concurrent I/O"
-    evidence_sentence: str    # the exact sentence/snippet that supports it
-    source_id: str
-    confidence: str           # "high" | "medium" | "low" (self-reported by the model)
 
 EXTRACTION_FUNCTION_DECLARATION = {
             "name": "record_extracted_claims",
             "description": (
                 "Record every distinct technical skill or capability the "
                 "text provides direct evidence for. Only include skills you "
-                "can point to a specific sentence for — do not infer skills "
+                "can point to a specific sentence for, do not infer skills "
                 "the text doesn't actually demonstrate."
             ),
             "parameters": {
@@ -92,7 +75,7 @@ EXTRACTION_FUNCTION_DECLARATION = {
 }
 
 SYSTEM_PROMPT = """You are extracting evidence of technical skills from a \
-candidate's resume or code repository content for a hiring-screening tool.
+job description, a candidate's resume, or code repository content for a hiring-screening tool.
 
 Rules:
 - Only extract claims you can point to a specific sentence for. Never infer \
@@ -170,13 +153,6 @@ def extract_all_claims(documents: List[SourceDocument]) -> List[ExtractedClaim]:
 
 
 #### Canonicalization Functions - merge near-duplicate skill mentions into one Skill node using embedding similarity.
-@dataclass
-class SkillNode:
-    skill_id: str
-    canonical_label: str            # label of the first mention that created this node
-    embedding: np.ndarray
-    member_labels: List[str] = field(default_factory=list)  # every raw phrasing merged in
- 
 class Canonicalizer:
     """
     Stateful per-candidate: holds one instance for the duration of one
