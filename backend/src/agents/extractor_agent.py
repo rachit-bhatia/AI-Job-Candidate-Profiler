@@ -217,6 +217,7 @@ def build_evidence_graph(documents: List[SourceDocument]) -> nx.DiGraph:
             type="Skill",
             canonical_label=node.canonical_label,
             member_labels=node.member_labels,
+            embedding=node.embedding
         )
  
     # pass 2: add claim nodes and wire up edges to nodes that already exist with full attributes
