@@ -2,6 +2,9 @@ from dataclasses import dataclass, field
 import numpy as np
 from typing import List
 
+STRONG_MATCH = "strong"
+MODERATE_MATCH = "moderate"
+WEAK_MATCH = "weak"
 @dataclass
 class SourceDocument:
     source_id: str          # e.g. "github_repo:order-processing-service"
@@ -21,3 +24,19 @@ class SkillNode:
     canonical_label: str            # label of the first mention that created this node
     embedding: np.ndarray
     member_labels: List[str] = field(default_factory=list)  # every raw phrasing merged in
+@dataclass
+class EntailmentResult:
+    label: str            # "entailment" | "neutral" | "contradiction"
+    justification: str
+
+@dataclass
+class SkillMatchResult:
+    requirement: str
+    final_status: str
+
+@dataclass
+class OverallAssessment:
+    status: str            # "strong" | "moderate" | "weak"
+    verified_req_count: int
+    weak_req_count: int
+    missing_req_count: int
